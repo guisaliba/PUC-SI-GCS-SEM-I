@@ -1,0 +1,71 @@
+---
+name: Delete Merged Branches
+
+'on':
+  pull_request:
+    types:
+      - closed
+
+jobs:
+  delete-branch:
+    # Only run if the PR was merged (not just closed)
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if branch should be deleted
+        id: check
+        run: |
+          BRANCH_NAME="${{ github.event.pull_request.head.ref }}"
+          echo "Branch name: $BRANCH_NAME"
+
+          # Define protected branch patterns
+          PROTECTED_BRANCHES=(
+            "main"
+            "dev"
+            "development"
+          )
+
+          # Check if branch matches protected patterns
+          SHOULD_DELETE=true
+
+          # Check exact matches for main, dev, development
+          for protected in "${PROTECTED_BRANCHES[@]}"; do
+            if [[ "$BRANCH_NAME" == "$protected" ]]; then
+              echo "Branch matches protected branch: $protected"
+              SHOULD_DELETE=false
+              break
+            fi
+          done
+
+          # Check if branch matches release/** pattern
+          if [[ "$BRANCH_NAME" =~ ^release/ ]]; then
+            echo "Branch matches release/** pattern"
+            SHOULD_DELETE=false
+          fi
+
+          echo "should_delete=$SHOULD_DELETE" >> $GITHUB_OUTPUT
+
+      - name: Delete merged branch
+        if: steps.check.outputs.should_delete == 'true'
+        run: |
+          BRANCH_NAME="${{ github.event.pull_request.head.ref }}"
+          echo "Deleting branch: $BRANCH_NAME"
+
+          # Delete the branch using GitHub API
+          REPO="${{ github.repository }}"
+          API_URL="https://api.github.com/repos/${REPO}"
+          API_URL="${API_URL}/git/refs/heads/${BRANCH_NAME}"
+
+          curl -X DELETE \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "$API_URL"
+
+          echo "Branch $BRANCH_NAME has been deleted"
+
+      - name: Branch preserved
+        if: steps.check.outputs.should_delete == 'false'
+        run: |
+          BRANCH="${{ github.event.pull_request.head.ref }}"
+          echo "Branch $BRANCH is protected and will not be deleted"
