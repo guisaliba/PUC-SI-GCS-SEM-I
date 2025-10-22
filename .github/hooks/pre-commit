@@ -1,0 +1,77 @@
+#!/bin/bash
+#
+# Pre-commit hook to validate commit author metadata
+# 
+# This hook validates that git user.name and user.email are configured
+# before allowing a commit.
+#
+# To install this hook:
+#   cp .github/hooks/pre-commit .git/hooks/pre-commit
+#   chmod +x .git/hooks/pre-commit
+#
+# To bypass this hook (not recommended):
+#   git commit --no-verify
+
+set -e
+
+echo "🔍 Validating commit author metadata..."
+
+# Get configured author name and email
+AUTHOR_NAME=$(git config user.name)
+AUTHOR_EMAIL=$(git config user.email)
+
+EXIT_CODE=0
+
+# Validate author name
+if [ -z "$AUTHOR_NAME" ]; then
+    echo "❌ ERROR: Git user.name is not configured!"
+    echo ""
+    echo "Please configure your name:"
+    echo "  git config user.name \"Your Name\""
+    echo ""
+    EXIT_CODE=1
+else
+    echo "✅ Author name: $AUTHOR_NAME"
+fi
+
+# Validate author email
+if [ -z "$AUTHOR_EMAIL" ]; then
+    echo "❌ ERROR: Git user.email is not configured!"
+    echo ""
+    echo "Please configure your email:"
+    echo "  git config user.email \"your.email@example.com\""
+    echo ""
+    EXIT_CODE=1
+elif ! echo "$AUTHOR_EMAIL" | grep -qE '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'; then
+    echo "❌ ERROR: Git user.email has invalid format: $AUTHOR_EMAIL"
+    echo ""
+    echo "Please configure a valid email address:"
+    echo "  git config user.email \"your.email@example.com\""
+    echo ""
+    EXIT_CODE=1
+else
+    echo "✅ Author email: $AUTHOR_EMAIL"
+fi
+
+if [ $EXIT_CODE -ne 0 ]; then
+    echo ""
+    echo "❌ Commit rejected: Author metadata validation failed"
+    echo ""
+    echo "You can configure your git settings globally or per-repository:"
+    echo "  Global:  git config --global user.name \"Your Name\""
+    echo "           git config --global user.email \"your.email@example.com\""
+    echo ""
+    echo "  Local:   git config user.name \"Your Name\""
+    echo "           git config user.email \"your.email@example.com\""
+    echo ""
+    echo "To bypass this check (not recommended):"
+    echo "  git commit --no-verify"
+    echo ""
+    exit 1
+fi
+
+echo ""
+echo "✅ Commit author metadata is valid"
+echo ""
+
+exit 0

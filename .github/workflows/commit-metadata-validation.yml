@@ -1,0 +1,102 @@
+name: Commit Metadata Validation
+
+on:
+  push:
+    branches:
+      - main
+      - 'release/**'
+  pull_request:
+    branches:
+      - main
+      - 'release/**'
+
+jobs:
+  validate-commit-metadata:
+    runs-on: ubuntu-latest
+    name: Validate Commit Author Metadata
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate commit author name and email
+        run: |
+          #!/bin/bash
+          set -e
+
+          echo "Validating commit metadata for commits in this push/PR..."
+
+          # Get the list of commits to check
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            # For PRs, check all commits in the PR
+            COMMITS=$(git rev-list ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }})
+          else
+            # For pushes, check the commits in the push
+            if [ "${{ github.event.before }}" == "0000000000000000000000000000000000000000" ]; then
+              # New branch, check the last commit only
+              COMMITS=$(git rev-parse HEAD)
+            else
+              COMMITS=$(git rev-list ${{ github.event.before }}..${{ github.event.after }})
+            fi
+          fi
+
+          EXIT_CODE=0
+
+          for COMMIT in $COMMITS; do
+            echo "----------------------------------------"
+            echo "Checking commit: $COMMIT"
+
+            # Get author name and email
+            AUTHOR_NAME=$(git log -1 --format='%an' $COMMIT)
+            AUTHOR_EMAIL=$(git log -1 --format='%ae' $COMMIT)
+
+            echo "Author Name: '$AUTHOR_NAME'"
+            echo "Author Email: '$AUTHOR_EMAIL'"
+
+            # Validate author name is not empty
+            if [ -z "$AUTHOR_NAME" ] || [ "$AUTHOR_NAME" == " " ]; then
+              echo "❌ ERROR: Commit $COMMIT has no author name!"
+              EXIT_CODE=1
+            else
+              echo "✅ Author name is present"
+            fi
+
+            # Validate author email is not empty and has valid format
+            if [ -z "$AUTHOR_EMAIL" ] || [ "$AUTHOR_EMAIL" == " " ]; then
+              echo "❌ ERROR: Commit $COMMIT has no author email!"
+              EXIT_CODE=1
+            elif ! echo "$AUTHOR_EMAIL" | grep -qE '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'; then
+              echo "❌ ERROR: Commit $COMMIT has invalid author email format: $AUTHOR_EMAIL"
+              EXIT_CODE=1
+            else
+              echo "✅ Author email is present and valid"
+            fi
+
+            # Get committer name and email for reference
+            COMMITTER_NAME=$(git log -1 --format='%cn' $COMMIT)
+            COMMITTER_EMAIL=$(git log -1 --format='%ce' $COMMIT)
+            echo "Committer Name: '$COMMITTER_NAME'"
+            echo "Committer Email: '$COMMITTER_EMAIL'"
+          done
+
+          echo "----------------------------------------"
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo ""
+            echo "❌ VALIDATION FAILED: One or more commits have missing or invalid author metadata"
+            echo ""
+            echo "All commits must have:"
+            echo "  - A non-empty author name"
+            echo "  - A valid author email address"
+            echo ""
+            echo "To fix this, configure your git user settings:"
+            echo "  git config user.name \"Your Name\""
+            echo "  git config user.email \"your.email@example.com\""
+            echo ""
+            exit 1
+          else
+            echo ""
+            echo "✅ SUCCESS: All commits have valid author metadata"
+            echo ""
+          fi
