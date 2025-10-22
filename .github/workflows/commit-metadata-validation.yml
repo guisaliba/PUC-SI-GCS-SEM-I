@@ -57,19 +57,21 @@ jobs:
             echo "Author Name: '$AUTHOR_NAME'"
             echo "Author Email: '$AUTHOR_EMAIL'"
 
-            # Validate author name is not empty
-            if [ -z "$AUTHOR_NAME" ] || [ "$AUTHOR_NAME" == " " ]; then
+            # Validate author name is not empty or whitespace-only
+            TRIMMED_AUTHOR_NAME=$(echo "$AUTHOR_NAME" | xargs)
+            if [ -z "$TRIMMED_AUTHOR_NAME" ]; then
               echo "❌ ERROR: Commit $COMMIT has no author name!"
               EXIT_CODE=1
             else
               echo "✅ Author name is present"
             fi
 
-            # Validate author email is not empty and has valid format
-            if [ -z "$AUTHOR_EMAIL" ] || [ "$AUTHOR_EMAIL" == " " ]; then
+            # Validate author email is not empty or whitespace-only and has valid format
+            TRIMMED_AUTHOR_EMAIL=$(echo "$AUTHOR_EMAIL" | xargs)
+            if [ -z "$TRIMMED_AUTHOR_EMAIL" ]; then
               echo "❌ ERROR: Commit $COMMIT has no author email!"
               EXIT_CODE=1
-            elif ! echo "$AUTHOR_EMAIL" | grep -qE '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'; then
+            elif ! echo "$TRIMMED_AUTHOR_EMAIL" | grep -qE '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'; then
               echo "❌ ERROR: Commit $COMMIT has invalid author email format: $AUTHOR_EMAIL"
               EXIT_CODE=1
             else
