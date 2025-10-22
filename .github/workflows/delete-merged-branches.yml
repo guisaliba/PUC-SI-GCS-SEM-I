@@ -11,6 +11,10 @@ jobs:
     # Only run if the PR was merged (not just closed)
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: write  # Required to delete branches
+
     steps:
       - name: Check if branch should be deleted
         id: check
