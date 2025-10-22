@@ -42,7 +42,7 @@ if [ -z "$AUTHOR_EMAIL" ]; then
     echo "  git config user.email \"your.email@example.com\""
     echo ""
     EXIT_CODE=1
-elif ! echo "$AUTHOR_EMAIL" | grep -qE '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'; then
+elif ! echo "$AUTHOR_EMAIL" | grep -qE '^[^@ \t\r\n]+@[^@ \t\r\n]+\.[^@ \t\r\n]+$'; then
     echo "❌ ERROR: Git user.email has invalid format: $AUTHOR_EMAIL"
     echo ""
     echo "Please configure a valid email address:"
