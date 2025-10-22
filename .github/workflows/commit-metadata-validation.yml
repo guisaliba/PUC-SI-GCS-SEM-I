@@ -14,6 +14,8 @@ jobs:
   validate-commit-metadata:
     runs-on: ubuntu-latest
     name: Validate Commit Author Metadata
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout code
